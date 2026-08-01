@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Exchange Receive Connector Creation/Update Script - README</title>
+<style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; margin: 20px; }
+    h1, h2, h3 { color: #003366; }
+    pre, code { font-family: "Courier New", Courier, monospace; background-color: #f4f4f4; padding: 8px; display: block; border: 1px solid #ccc; }
+    .section { margin-bottom: 25px; }
+</style>
+</head>
+<body>
+
+<h1>Exchange Receive Connector Creation/Update Script</h1>
+<p><strong>Version:</strong> 2.1<br>
+<strong>Author:</strong> Ted Mittelstaedt</p>
+
+<div class="section">
+<h2>📌 Purpose</h2>
+<p>This PowerShell script creates or updates a <strong>secure Exchange Receive Connector</strong> that allows anonymous SMTP relay from one or more specific internal hosts.</p>
+<ul>
+<li>Prevent <strong>open relay</strong></li>
+<li>Allow only <strong>specified IP addresses</strong> to relay externally</li>
+<li>Automatically apply the correct <strong>relay permissions</strong></li>
+<li>Work in both <strong>local and remote Exchange Management Shell</strong></li>
+</ul>
+</div>
+
+<div class="section">
+<h2>✨ Features</h2>
+<ol>
+<li><strong>Warning Message</strong> – Displays a clear warning about proper usage before running.</li>
+<li><strong>User Input</strong> – Prompts for:
+    <ul>
+        <li>Connector name</li>
+        <li>One or more IP addresses (comma-separated)</li>
+    </ul>
+    Uses the current server name automatically.
+</li>
+<li><strong>DNS Validation</strong> – Checks PTR and forward DNS for each IP; stops if any fail.</li>
+<li><strong>IP Conflict Check</strong> – Ensures no entered IP is already assigned to another connector.</li>
+<li><strong>Connector Creation or Update</strong> – Updates or creates with correct settings.</li>
+<li><strong>Relay Permissions</strong> – Grants <code>NT AUTHORITY\ANONYMOUS LOGON</code> the right <code>Ms-Exch-SMTP-Accept-Any-Recipient</code>.</li>
+<li><strong>Remote Session Compatibility</strong> – Uses <code>.Identity.ToString()</code> for remote PowerShell.</li>
+<li><strong>Verification</strong> – Confirms relay rights are applied.</li>
+<li><strong>Summary Output</strong> – Displays connector details.</li>
+</ol>
+</div>
+
+<div class="section">
+<h2>🛠 Requirements</h2>
+<ul>
+<li>Exchange Management Shell (local or remote)</li>
+<li>Exchange Organization Administrator rights</li>
+<li>PowerShell 5.1 or later</li>
+<li>DNS PTR and forward records for each IP</li>
+</ul>
+</div>
+
+<div class="section">
+<h2>🚀 Usage</h2>
+<pre><code>Save the script as CreateOrUpdateReceiveConnector.ps1
+Open Exchange Management Shell.
+Run:
+    .\CreateOrUpdateReceiveConnector.ps1
+Follow the prompts.
+</code></pre>
+</div>
+
+<div class="section">
+<h2>💡 Example Run</h2>
+<pre><code>Enter the name for the Receive Connector: RelayFromAppServer
+Enter the internal host IP(s) allowed to relay (comma-separated if multiple): 192.168.1.50,192.168.1.51
+</code></pre>
+</div>
+
+<div class="section">
+<h2>📧 Example PowerShell Command to Test Relay</h2>
+<pre><code>Send-MailMessage -From test@yourdomain.com -To recipient@externaldomain.com `
+    -Subject "Relay Test" -Body "This is a test email" `
+    -SmtpServer exchangeserver.yourdomain.local -Port 25
+</code></pre>
+</div>
+
+<div class="section">
+<h2>⚠ Notes</h2>
+<ul>
+<li>Safe for production use only if you enter trusted internal IP addresses.</li>
+<li><strong>Do NOT</strong> allow relay from <code>0.0.0.0/0</code> or public IP ranges.</li>
+<li>Always verify relay functionality from allowed IPs after running.</li>
+</ul>
+</div>
+
+<div class="section">
+<h2>📄 License</h2>
+<p>You may modify and use this script internally. Redistribution should include this README.</p>
+</div>
+
+</body>
+</html>
