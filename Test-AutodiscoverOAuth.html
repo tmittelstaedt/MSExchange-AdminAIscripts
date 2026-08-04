@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Test-AutodiscoverOAuth.ps1 – Usage & Setup Guide</title>
+<style>
+    body { font-family: Segoe UI, Arial, sans-serif; line-height: 1.6; margin: 20px; }
+    h1, h2, h3 { color: #0078D4; }
+    code { background-color: #f4f4f4; padding: 2px 4px; border-radius: 4px; }
+    pre { background-color: #f4f4f4; padding: 10px; border-radius: 4px; overflow-x: auto; }
+    .note { background-color: #FFF4CE; padding: 10px; border-left: 5px solid #FFB900; }
+    .warning { background-color: #FDE7E9; padding: 10px; border-left: 5px solid #D83B01; }
+</style>
+</head>
+<body>
+
+<h1>Test-AutodiscoverOAuth.ps1 – Usage & Setup Guide</h1>
+
+<h2>Purpose</h2>
+<p>
+This PowerShell script tests <strong>OAuth-based Autodiscover</strong> for Exchange Online mailboxes, simulating how a mobile client would authenticate using Modern Authentication.
+</p>
+<ul>
+    <li>Prompts for an <strong>email address</strong>.</li>
+    <li>Automatically determines the <strong>tenant ID</strong> from the domain.</li>
+    <li>Uses the <strong>OAuth 2.0 device code flow</strong> to authenticate.</li>
+    <li>Sends an <strong>Autodiscover request</strong> to Exchange Online using the acquired token.</li>
+    <li>Displays the <strong>raw XML response</strong> from Autodiscover.</li>
+    <li>Warns if no mailbox settings are returned (expected if the mailbox is on-premises and Hybrid Modern Authentication is not yet enabled).</li>
+</ul>
+
+<h2>When to Use</h2>
+<ul>
+    <li><strong>Before Hybrid Modern Authentication</strong> – Confirm that cloud Autodiscover returns no settings for on-prem mailboxes (baseline test).</li>
+    <li><strong>After Hybrid Modern Authentication</strong> – Verify that OAuth Autodiscover works for both cloud and on-prem mailboxes.</li>
+</ul>
+
+<h2>Script Usage</h2>
+<ol>
+    <li>Save the script as <code>Test-AutodiscoverOAuth.ps1</code>.</li>
+    <li>Open <strong>PowerShell</strong>.</li>
+    <li>Run:<br>
+        <pre>.\Test-AutodiscoverOAuth.ps1 -ClientId "&lt;Your-App-Client-ID&gt;"</pre>
+    </li>
+    <li>Enter the <strong>full email address</strong> when prompted.</li>
+    <li>Follow the on-screen instructions to:
+        <ul>
+            <li>Open the provided URL in a browser.</li>
+            <li>Enter the device code.</li>
+            <li>Sign in with the test account (MFA supported).</li>
+        </ul>
+    </li>
+    <li>The script will:
+        <ul>
+            <li>Query Exchange Online Autodiscover.</li>
+            <li>Display the raw XML.</li>
+            <li>Show a warning if no mailbox settings are returned.</li>
+        </ul>
+    </li>
+</ol>
+
+<h2>Expected Output Examples</h2>
+<h3>Pre-Hybrid (On-Prem Mailbox)</h3>
+<pre>
+Raw Autodiscover XML Response:
+500The email address can't be found.
+WARNING: No mailbox settings returned. This is expected if the mailbox is on-premises and Hybrid Modern Authentication is not yet enabled.
+</pre>
+
+<h3>Post-Hybrid (Mailbox Found)</h3>
+<pre>
+Raw Autodiscover XML Response:
+&lt;?xml version="1.0" encoding="utf-8"?&gt;
+&lt;Autodiscover&gt;
+  &lt;Response&gt;
+    &lt;Account&gt;
+      &lt;Protocol&gt;...&lt;/Protocol&gt;
+    &lt;/Account&gt;
+  &lt;/Response&gt;
+&lt;/Autodiscover&gt;
+</pre>
+
+<h2>Azure AD App Registration Setup</h2>
+
+<h3>Step 1 – Create the App Registration</h3>
+<ol>
+    <li>Sign in to the <a href="https://portal.azure.com" target="_blank">Azure Portal</a>.</li>
+    <li>Go to <strong>Azure Active Directory</strong> → <strong>App registrations</strong> → <strong>New registration</strong>.</li>
+    <li>Name the app (e.g., <code>Autodiscover OAuth Test</code>).</li>
+    <li>Supported account types: <strong>Accounts in this organizational directory only</strong>.</li>
+    <li>Redirect URI: Leave blank for now.</li>
+    <li>Click <strong>Register</strong>.</li>
+</ol>
+
+<h3>Step 2 – Enable Public Client Flows</h3>
+<ol>
+    <li>In the app registration, go to <strong>Authentication</strong>.</li>
+    <li>Under <strong>Advanced settings</strong>, set <strong>Allow public client flows</strong> to <strong>Yes</strong>.</li>
+    <li>Click <strong>Save</strong>.</li>
+</ol>
+
+<h3>Step 3 – Add API Permissions</h3>
+
+<h4>Exchange Online (EWS)</h4>
+<ol>
+    <li>Go to <strong>API permissions</strong> → <strong>Add a permission</strong>.</li>
+    <li>Select <strong>APIs my organization uses</strong>.</li>
+    <li>Search for <strong>Office 365 Exchange Online</strong>.</li>
+    <li>Select <strong>Delegated permissions</strong>.</li>
+    <li>Expand <strong>EWS</strong> and check:
+        <pre>EWS.AccessAsUser.All</pre>
+    </li>
+    <li>Click <strong>Add permissions</strong>.</li>
+</ol>
+
+<h4>Azure Active Directory Graph</h4>
+<ol>
+    <li>Click <strong>Add a permission</strong> again.</li>
+    <li>Select <strong>APIs my organization uses</strong>.</li>
+    <li>Search for <strong>Azure Active Directory Graph</strong>.</li>
+    <li>Select <strong>Delegated permissions</strong>.</li>
+    <li>Expand <strong>Directory</strong> and check:
+        <pre>Directory.Read.All</pre>
+    </li>
+    <li>Expand <strong>User</strong> and check:
+        <pre>User.Read</pre>
+    </li>
+    <li>Click <strong>Add permissions</strong>.</li>
+</ol>
+
+<h3>Step 4 – Grant Admin Consent</h3>
+<ol>
+    <li>In <strong>API permissions</strong>, click <strong>Grant admin consent</strong> for your organization.</li>
+    <li>Confirm the action when prompted.</li>
+</ol>
+
+<h3>Step 5 – Get the Client ID</h3>
+<ol>
+    <li>In the app registration, go to <strong>Overview</strong>.</li>
+    <li>Copy the <strong>Application (client) ID</strong> — this is the value you pass to the script’s <code>-ClientId</code> parameter.</li>
+</ol>
+
+<h2>Security Notes</h2>
+<ul>
+    <li>The script uses <strong>device code flow</strong> — no secrets or certificates are stored.</li>
+    <li>The access token is valid for a short time and is only used for the Autodiscover test.</li>
+    <li>Requires <strong>Modern Authentication</strong> to be enabled in Exchange Online (and Hybrid Modern Auth for on-premises mailboxes).</li>
+</ul>
+
+<h2>Post-Hybrid Testing</h2>
+<p>
+After enabling Hybrid Modern Authentication:
+</p>
+<ul>
+    <li>The script will return full Autodiscover settings for on-prem mailboxes.</li>
+    <li>You can use the same script without modification — it will work for both cloud and on-prem mailboxes.</li>
+</ul>
+
+<h2>Autodiscover OAuth Flow Diagram</h2>
+<p>
+Below is a simplified flow of how the script works:
+</p>
+<pre>
+User → Script Prompt → Tenant ID Discovery → OAuth Device Code Request
+→ User Sign-In (MFA Supported) → Access Token Received
+→ Autodiscover Request to Exchange Online → Raw XML Response
+</pre>
+
+<div class="note">
+    <strong>Author</strong> Ted Mittelstaedt 8/4/2026
+</div>
+
+</body>
+</html>
+
+
+
