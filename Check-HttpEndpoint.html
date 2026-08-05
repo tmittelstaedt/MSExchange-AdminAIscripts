@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Check-HttpEndpoint.ps1 Documentation</title>
+<style>
+    body { font-family: Arial, sans-serif; line-height: 1.5; margin: 20px; }
+    h1, h2, h3 { color: #003366; }
+    code, pre { font-family: "Courier New", monospace; background-color: #f4f4f4; padding: 4px; }
+    pre { padding: 10px; border: 1px solid #ccc; overflow-x: auto; }
+    .note { background-color: #ffffcc; padding: 8px; border: 1px solid #cccc99; }
+</style>
+</head>
+<body>
+
+<h1>📄 Check-HttpEndpoint.ps1 – Script Documentation</h1>
+
+<h2>Purpose</h2>
+<p>
+This PowerShell script tests an HTTP or HTTPS endpoint (such as an Autodiscover service) and performs <strong>two types of analysis</strong>:
+</p>
+<ol>
+    <li><strong>Raw HTTP Capture</strong>
+        <ul>
+            <li>Connects directly to the server using TCP (and SSL for HTTPS).</li>
+            <li>Sends a manual <code>GET</code> request.</li>
+            <li>Captures the <strong>exact raw HTTP response</strong> (headers + body) as sent by the server.</li>
+            <li>Saves this to a log file (<code>HttpAnalysis.txt</code>) in the same folder as the script.</li>
+            <li>Detects the server type from the <code>Server:</code> header if present.</li>
+        </ul>
+    </li>
+    <li><strong>Parsed HTTP Request</strong>
+        <ul>
+            <li>Uses <code>Invoke-WebRequest</code> to fetch the same URL.</li>
+            <li>Displays HTTP status code, response time, and parsed headers.</li>
+            <li>Detects server type from parsed headers.</li>
+            <li>Optionally saves the full body to a file.</li>
+            <li>Displays the first 40 lines of the body in the console.</li>
+            <li>Performs basic content analysis (HTML, XML, other, or empty).</li>
+        </ul>
+    </li>
+</ol>
+
+<h2>How It Works</h2>
+<ol>
+    <li><strong>Raw Capture First</strong>
+        <ul>
+            <li>The script calls <code>Get-RawHttpResponse</code> before anything else.</li>
+            <li>This ensures the log file is <strong>always</strong> written, even if the parsed request fails.</li>
+            <li>The log file path is set to:
+                <pre>$PSScriptRoot\HttpAnalysis.txt</pre>
+                This means it will be saved in the same folder as the script.
+            </li>
+        </ul>
+    </li>
+    <li><strong>Server Detection</strong>
+        <ul>
+            <li>Both raw and parsed responses are scanned for a <code>Server:</code> header.</li>
+            <li>If found, the script identifies common server types (Varnish, Apache, Nginx, or other).</li>
+        </ul>
+    </li>
+    <li><strong>Parsed Request</strong>
+        <ul>
+            <li>The script uses <code>Invoke-WebRequest</code> to get a structured response.</li>
+            <li>Displays headers, status code, and response time.</li>
+            <li>Shows the first 40 lines of the body in the console.</li>
+            <li>Performs a simple content-type check.</li>
+        </ul>
+    </li>
+    <li><strong>Error Handling</strong>
+        <ul>
+            <li>If the parsed request fails, the script attempts to extract the status code, headers, and body from the error response.</li>
+            <li>All exceptions are caught and displayed with elapsed time.</li>
+        </ul>
+    </li>
+</ol>
+
+<h2>Parameters</h2>
+<pre>
+- TestUrl          (Required)  The full URL to test.
+- SaveBodyPath     (Optional)  Path to save the full response body.
+- AnalysisFilePath (Optional)  Path to save the raw HTTP log file.
+                               Defaults to "$PSScriptRoot\HttpAnalysis.txt".
+</pre>
+
+<h2>Usage Examples</h2>
+
+<h3>Example 1 – Basic Test</h3>
+<pre>
+PS C:\Scripts> .\Check-HttpEndpoint.ps1 -TestUrl "https://example.com/autodiscover/autodiscover.xml"
+</pre>
+<p>
+Captures raw HTTP response and saves it to <code>HttpAnalysis.txt</code> in the script folder.  
+Displays parsed request results in the console.
+</p>
+
+<h3>Example 2 – Save Full Body</h3>
+<pre>
+PS C:\Scripts> .\Check-HttpEndpoint.ps1 -TestUrl "https://example.com/test" -SaveBodyPath "C:\Temp\fullbody.txt"
+</pre>
+<p>
+Saves the full parsed response body to <code>C:\Temp\fullbody.txt</code>.  
+Still writes raw HTTP response to <code>HttpAnalysis.txt</code>.
+</p>
+
+<h3>Example 3 – Custom Log File Path</h3>
+<pre>
+PS C:\Scripts> .\Check-HttpEndpoint.ps1 -TestUrl "https://example.com" -AnalysisFilePath "C:\Logs\RawHttp.txt"
+</pre>
+<p>
+Saves raw HTTP response to <code>C:\Logs\RawHttp.txt</code> instead of the default location.
+</p>
+
+<h2>Output Files</h2>
+<ul>
+    <li><strong>HttpAnalysis.txt</strong> → Raw HTTP headers + body exactly as sent by the server.</li>
+    <li><strong>(Optional)</strong> Full body file if <code>-SaveBodyPath</code> is specified.</li>
+</ul>
+
+<h2>Notes</h2>
+<div class="note">
+<ul>
+    <li>The raw capture uses a manual TCP/SSL connection, so it will show <strong>exactly</strong> what the server sends — even if <code>Invoke-WebRequest</code> fails or strips headers.</li>
+    <li>The parsed request may differ from the raw capture because PowerShell’s web client automatically follows redirects, handles cookies, and may normalize headers.</li>
+    <li>If you get "No Server header found", the server is deliberately hiding its type.</li>
+</ul>
+</div>
+
+</body>
+</html>
