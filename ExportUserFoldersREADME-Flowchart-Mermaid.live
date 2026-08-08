@@ -1,0 +1,21 @@
+flowchart TD
+    A[Start Script] --> B[Read Parameters: Mailbox, OutputFile, ExportPath]
+    B --> C{ExportPath Provided?}
+    C -- No --> D[Set ExportPath to default UNC path \\exchange.coda.com\pst\<Mailbox>.pst]
+    C -- Yes --> E[Use Provided ExportPath]
+    D --> F[Get-MailboxFolderStatistics for Mailbox]
+    E --> F
+    F --> G[Filter Folders: FolderType is User Created or Archive]
+    G --> H[Exclude Known System and Unwanted Folders such as Outbox, Sync Issues, Junk Email]
+    H --> I{Any Folders Left?}
+    I -- No --> J[Output message No folders found and Exit]
+    I -- Yes --> K[Trim Leading Slash from Folder Paths]
+    K --> L[Wrap Folder Names in Double Quotes]
+    L --> M[Join Folder Names with Commas]
+    M --> N[Build Export Command using New-MailboxExportRequest]
+    N --> O[Write Export Command to Output File]
+    O --> P[Build Remove Command for completed export jobs]
+    P --> Q[Create Remove Output File Name with word Remove before extension]
+    Q --> R[Write Remove Command to Remove Output File]
+    R --> S[Display Both Commands on Screen]
+    S --> T[End Script]

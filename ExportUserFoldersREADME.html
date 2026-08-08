@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>ExportUserFolders.ps1 – Script Documentation</title>
+<style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; }
+    h1, h2, h3 { color: #003366; }
+    pre { background-color: #f4f4f4; padding: 10px; border: 1px solid #ccc; font-family: "Courier New", monospace; }
+    table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
+    table, th, td { border: 1px solid #ccc; }
+    th, td { padding: 8px; text-align: left; }
+    th { background-color: #e6f0ff; }
+</style>
+</head>
+<body>
+
+<h1>ExportUserFolders.ps1 – Script Documentation</h1>
+
+<h2>Purpose</h2>
+<p>This PowerShell script is designed for use in the <strong>Exchange Management Shell</strong> to:</p>
+<ul>
+    <li>Identify <strong>all user-created</strong> and <strong>archive</strong> folders in a mailbox.</li>
+    <li>Exclude <strong>known system folders</strong> and other unwanted folders.</li>
+    <li>Generate a <code>New-MailboxExportRequest</code> command to export those folders to a PST file.</li>
+    <li>Save that command to a specified output file.</li>
+    <li>Create a <strong>second file</strong> containing a command to remove <strong>only completed</strong> export jobs for that mailbox from the queue.</li>
+</ul>
+
+<h2>Parameters</h2>
+<table>
+<tr><th>Parameter</th><th>Required</th><th>Description</th></tr>
+<tr><td><code>-Mailbox</code></td><td>Yes</td><td>The mailbox identity (alias, SMTP address, or display name).</td></tr>
+<tr><td><code>-OutputFile</code></td><td>Yes</td><td>Path to the file where the export command will be saved.</td></tr>
+<tr><td><code>-ExportPath</code></td><td>No</td><td>UNC path for the PST file. If not supplied, defaults to:<br><code>\\exchange.example.com\pst&lt;MailboxName&gt;.pst</code></td></tr>
+</table>
+
+<h2>Folder Filtering Logic</h2>
+<p>The script retrieves mailbox folders using:</p>
+<pre>Get-MailboxFolderStatistics -Identity &lt;Mailbox&gt;</pre>
+
+<p>It <strong>includes</strong>:</p>
+<ul>
+    <li>Folders where <code>FolderType</code> is <strong>User Created</strong></li>
+    <li>Folders where <code>FolderType</code> is <strong>Archive</strong></li>
+</ul>
+
+<p>It <strong>excludes</strong> the following folders:</p>
+<pre>
+Outbox
+Outbox/VoiceOutbox
+Sync Issues
+Sync Issues/Conflicts
+Sync Issues/Local Failures
+Sync Issues/Server Failures
+Conversation History
+Junk Email
+RSS Feeds
+News Feed
+Quick Step Settings
+</pre>
+
+<h2>Folder Name Cleanup</h2>
+<ul>
+    <li>Removes the <strong>leading slash</strong> (<code>/</code>) from folder paths.</li>
+    <li>Wraps <strong>all folder names</strong> in <strong>double quotes</strong> to ensure spaces and special characters are handled correctly.</li>
+</ul>
+
+<p><strong>Example:</strong></p>
+<pre>
+/Projects
+/Personal Stuff
+</pre>
+<p>becomes:</p>
+<pre>
+"Projects","Personal Stuff"
+</pre>
+
+<h2>Export Command Creation</h2>
+<p>The script builds a single-line export command in the format:</p>
+<pre>
+New-MailboxExportRequest -Mailbox "&lt;MailboxName&gt;" -IncludeFolders "Folder1","Folder2" -FilePath "\\exchange.example.com\pst&lt;MailboxName&gt;.pst"
+</pre>
+<p>This command is saved to the file specified by <code>-OutputFile</code>.</p>
+
+<h2>Remove Command Creation</h2>
+<p>The script also creates a <strong>second file</strong> with the same name as the first, but with <strong>"Remove"</strong> inserted before the extension.</p>
+
+<p><strong>Example:</strong></p>
+<pre>
+C:\Temp\ExportCommand.txt
+C:\Temp\ExportCommandRemove.txt
+</pre>
+
+<p>The remove file contains a command that <strong>only removes completed export jobs</strong> for that mailbox:</p>
+<pre>
+Get-MailboxExportRequest -Mailbox "&lt;MailboxName&gt;" | Where-Object {$_.Status -eq "Completed"} | Remove-MailboxExportRequest
+</pre>
+
+<h2>Example Usage</h2>
+
+<p><strong>Run with default PST path:</strong></p>
+<pre>
+.\ExportUserFolders.ps1 -Mailbox "TedMittelstaedt" -OutputFile "C:\Temp\ExportCommand.txt"
+</pre>
+<p>PST will be saved to:</p>
+<pre>
+\\exchange.example.com\pst\TedMittelstaedt.pst
+</pre>
+<p>Creates:</p>
+<pre>
+C:\Temp\ExportCommand.txt
+C:\Temp\ExportCommandRemove.txt
+</pre>
+
+<p><strong>Run with custom PST path:</strong></p>
+<pre>
+.\ExportUserFolders.ps1 -Mailbox "TedMittelstaedt" -OutputFile "C:\Temp\ExportCommand.txt" -ExportPath "\\server\pstshare\TedMittelstaedt.pst"
+</pre>
+<p>PST will be saved to:</p>
+<pre>
+\\server\pstshare\TedMittelstaedt.pst
+</pre>
+
+<h2>Example Output Files</h2>
+
+<p><strong>ExportCommand.txt</strong></p>
+<pre>
+New-MailboxExportRequest -Mailbox "TedMittelstaedt" -IncludeFolders "Projects","Personal Stuff","Archive/Old Projects" -FilePath "\\exchange.example.com\pst\TedMittelstaedt.pst"
+</pre>
+
+<p><strong>ExportCommandRemove.txt</strong></p>
+<pre>
+Get-MailboxExportRequest -Mailbox "TedMittelstaedt" | Where-Object {$_.Status -eq "Completed"} | Remove-MailboxExportRequest
+</pre>
+
+<h2>Key Benefits</h2>
+<ul>
+    <li><strong>Safe</strong>: Only removes completed export jobs.</li>
+    <li><strong>Accurate</strong>: Filters out unwanted system folders.</li>
+    <li><strong>Flexible</strong>: Supports both user-created and archive folders.</li>
+    <li><strong>Consistent</strong>: Always quotes folder names to avoid parsing errors.</li>
+</ul>
+
+</body>
+</html>
