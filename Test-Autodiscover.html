@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Exchange Autodiscover Diagnostic and Protocol Detection Tool</title>
+<style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; }
+    h1, h2, h3 { color: #003366; }
+    pre, code { font-family: "Courier New", Courier, monospace; background-color: #f4f4f4; padding: 8px; display: block; }
+    ul { margin-top: 0; }
+</style>
+</head>
+<body>
+
+<h1>Exchange Autodiscover Diagnostic and Protocol Detection Tool</h1>
+<p><strong>Author:</strong> Ted Mittelstaedt, Portlandia IT LLC<br>
+<strong>Version:</strong> 1.0<br>
+<strong>Date:</strong> 08/10/2026</p>
+
+<hr>
+
+<h2>1. Purpose</h2>
+<p>This PowerShell script is designed to test and diagnose Microsoft Exchange Autodiscover endpoints. It performs DNS lookups, sends multiple Autodiscover POST requests, saves the returned XML responses, and detects whether the server advertises IMAP, Exchange ActiveSync (EAS), or both. It also provides a summary table and optional CSV export for reporting.</p>
+
+<h2>2. Features</h2>
+<ul>
+    <li>Performs DNS lookups for <strong>A</strong>, <strong>AAAA</strong>, <strong>CNAME</strong>, and <strong>SRV</strong> records related to Autodiscover.</li>
+    <li>Tests multiple Autodiscover URLs:
+        <ul>
+            <li>https://&lt;domain&gt;/autodiscover/autodiscover.xml</li>
+            <li>https://autodiscover.&lt;domain&gt;/autodiscover/autodiscover.xml</li>
+        </ul>
+    </li>
+    <li>Sends three types of Autodiscover POST requests:
+        <ol>
+            <li><strong>Desktop Outlook schema</strong> (full XML)</li>
+            <li><strong>“Mobile” Outlook schema</strong> (full XML)</li>
+            <li><strong>MobileSync schema</strong> (short XML, phone-style)</li>
+        </ol>
+    </li>
+    <li>Saves all XML responses to disk if requested.</li>
+    <li>Scans all XML responses for <strong>IMAP</strong> and <strong>EAS/ActiveSync</strong> indicators.</li>
+    <li>Displays warnings if both IMAP and EAS are detected (mixed protocols).</li>
+    <li>Outputs a summary table and optionally exports it to CSV.</li>
+</ul>
+
+<h2>3. Logic Flow</h2>
+<ol>
+    <li><strong>DNS Resolution</strong>
+        <ul>
+            <li>Queries DNS for A, AAAA, CNAME, and SRV records for the Autodiscover host.</li>
+            <li>Displays results and stores them for the summary.</li>
+        </ul>
+    </li>
+    <li><strong>HTTP Autodiscover Tests</strong>
+        <ul>
+            <li>For each Autodiscover URL:
+                <ul>
+                    <li>Sends a Desktop Outlook schema POST request.</li>
+                    <li>Sends a “Mobile” Outlook schema POST request.</li>
+                    <li>Sends a MobileSync schema POST request.</li>
+                </ul>
+            </li>
+            <li>If credentials are not provided, falls back to a simple GET request.</li>
+        </ul>
+    </li>
+    <li><strong>Saving XML Responses</strong>
+        <ul>
+            <li>If a save path is provided, writes each XML response to disk with descriptive filenames.</li>
+        </ul>
+    </li>
+    <li><strong>Protocol Detection</strong>
+        <ul>
+            <li>Combines the content of all three XML responses.</li>
+            <li>Searches for the strings “IMAP” and “EAS” or “ActiveSync” (case-insensitive).</li>
+            <li>Logs results as:
+                <ul>
+                    <li>IMAP DETECTED</li>
+                    <li>EAS DETECTED</li>
+                    <li>IMAP + EAS DETECTED</li>
+                    <li>PASS (no IMAP/EAS found)</li>
+                </ul>
+            </li>
+        </ul>
+    </li>
+    <li><strong>Summary and Export</strong>
+        <ul>
+            <li>Displays a summary table of DNS and HTTP test results.</li>
+            <li>Optionally exports the summary to CSV.</li>
+        </ul>
+    </li>
+</ol>
+
+<h2>4. Protocol Explanations</h2>
+
+<h3>EWS – Exchange Web Services</h3>
+<ul>
+    <li>A SOAP-based API provided by Microsoft Exchange.</li>
+    <li>Used by Outlook, third-party applications, and migration tools to access mailbox data, calendars, contacts, and tasks.</li>
+    <li>Typically accessed via HTTPS at <code>/EWS/Exchange.asmx</code>.</li>
+    <li>Supports advanced features like free/busy lookup, delegate access, and folder synchronization.</li>
+</ul>
+
+<h3>EAS – Exchange ActiveSync</h3>
+<ul>
+    <li>A Microsoft protocol designed for mobile devices to synchronize email, calendar, contacts, and tasks.</li>
+    <li>Uses HTTP(S) and XML over a long-lived connection.</li>
+    <li>Commonly used by iOS Mail, Android Email, and Windows Mail apps.</li>
+    <li>Endpoint is usually <code>/Microsoft-Server-ActiveSync</code>.</li>
+</ul>
+
+<h3>IMAP – Internet Message Access Protocol</h3>
+<ul>
+    <li>An open standard email retrieval protocol (RFC 3501).</li>
+    <li>Allows clients to access and manage email stored on a mail server.</li>
+    <li>Supports folder management and message flags but does not natively sync calendars or contacts.</li>
+    <li>Commonly used by non-Exchange servers (e.g., Dovecot, Courier, Gmail IMAP).</li>
+</ul>
+
+<h2>5. Autodiscover Beyond Outlook</h2>
+<p>While Autodiscover is a Microsoft technology primarily associated with Outlook, it can be implemented for other email clients. By setting up an Autodiscover server that returns XML in the expected format, non-Outlook clients can automatically configure their email settings.</p>
+<p>Example: The open-source project <a href="https://github.com/Monogramm/autodiscover-email-settings">autodiscover-email-settings</a> provides a PHP-based Autodiscover service that can be used to supply configuration data for Thunderbird, Apple Mail, and other clients.</p>
+
+<h2>6. Usage</h2>
+<pre><code>powershell.exe -ExecutionPolicy Bypass -File .\Test-Autodiscover.ps1 -Domain example.com -EmailAddress user@example.com -Credential (Get-Credential) -SaveXmlPath "C:\Temp\AutodiscoverResults"
+</code></pre>
+
+<h2>7. Output Interpretation</h2>
+<ul>
+    <li><strong>PASS</strong>: Autodiscover returned valid XML without IMAP/EAS indicators.</li>
+    <li><strong>EAS DETECTED</strong>: Exchange ActiveSync is advertised.</li>
+    <li><strong>IMAP DETECTED</strong>: IMAP is advertised (may indicate non-Exchange server).</li>
+    <li><strong>IMAP + EAS DETECTED</strong>: Both protocols are advertised (mixed environment).</li>
+    <li><strong>ERROR</strong>: The request failed (network, authentication, or server error).</li>
+</ul>
+
+<h2>8. Notes</h2>
+<ul>
+    <li>Mobile clients may fail if Autodiscover endpoints return HTTP errors other than 500 (e.g., 401, 403, 404).</li>
+    <li>Ensure that unused or misconfigured endpoints are removed from DNS or return a proper 500 error.</li>
+    <li>This script is intended for diagnostic purposes and should be run by administrators with appropriate permissions.</li>
+</ul>
+
+</body>
+</html>
