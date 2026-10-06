@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>README - Exchange Title Import Utility</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #333333;
+            max-width: 880px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background-color: #f8f9fa;
+        }
+        h1, h2, h3 {
+            color: #0056b3;
+            font-weight: 600;
+        }
+        h1 {
+            border-bottom: 2px solid #0056b3;
+            padding-bottom: 10px;
+            margin-bottom: 30px;
+        }
+        h2 {
+            margin-top: 30px;
+            border-bottom: 1px solid #dee2e6;
+            padding-bottom: 5px;
+        }
+        code {
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+            background-color: #e9ecef;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+        pre {
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+            background-color: #1e1e1e;
+            color: #f4f4f4;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 0.9em;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background-color: #ffffff;
+        }
+        th, td {
+            border: 1px solid #dee2e6;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #0056b3;
+            color: #ffffff;
+        }
+        tr:nth-child(even) {
+            background-color: #f1f3f5;
+        }
+        .footer {
+            margin-top: 5px;
+            font-size: 0.85em;
+            color: #6c757d;
+            text-align: center;
+            border-top: 1px solid #dee2e6;
+            padding-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Exchange Title Import Utility</h1>
+    <p>This PowerShell utility automates the process of updating employee <strong>Title</strong> (Position) attributes in an on-premises Exchange environment using data imported from a structured CSV file. The script runs natively within the <strong>Exchange Management Shell (EMS)</strong> and uses a multi-tier search pattern to handle common human resource data discrepancies gracefully.</p>
+
+    <h2>Core Features</h2>
+    <ul>
+        <li><strong>Automatic Suffix Stripping:</strong> Automatically removes common professional or generational suffixes (such as <code>MD</code>, <code>DO</code>, <code>JR</code>, <code>III</code>) from last name strings prior to processing lookups.</li>
+        <li><strong>First Name Normalization:</strong> Strips middle initials and secondary tokens by extracting only the primary first name.</li>
+        <li><strong>Persistent Nickname Learning Table:</strong> Remembers verified user mappings (e.g., matching <code>JENNY</code> to a mailbox named <code>JENNIFER</code>) and saves them dynamically to an external flat-file registry.</li>
+        <li><strong>Interactive Conflict &amp; Duplicate Resolution:</strong> Provides console-driven prompts when running under manual inspection to handle multi-account collisions or completely unmatched names.</li>
+        <li><strong>Safe Target Verification:</strong> Binds user modifications directly against explicit string identifiers (<code>SamAccountName</code>) to avoid common remote-deserialization runtime validation errors.</li>
+    </ul>
+
+    <h2>File System Configurations</h2>
+    <p>The script relies on the following default environment paths for its import source data and persistent configurations:</p>
+    <table>
+        <thead>
+            <tr>
+                <th>Target Variable</th>
+                <th>Configured File System Path</th>
+                <th>Purpose Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>$csvPath</code></td>
+                <td><code>C:\ScriptsandHealthChecker\Employee List.csv</code></td>
+                <td>The source CSV file containing the data rows to process. Must contain <code>Employee_Name</code> and <code>Position</code> columns.</td>
+            </tr>
+            <tr>
+                <td><code>$mapPath</code></td>
+                <td><code>C:\ScriptsandHealthChecker\NicknameMap.txt</code></td>
+                <td>A local text database mapping unknown lookup strings directly to formal Active Directory names (formatted as <code>CSV_NAME=EXCHANGE_NAME</code>).</td>
+            </tr>
+        </tbody>
+    </tbody>
+    </table>
+
+    <h2>Parameters &amp; Switches</h2>
+    <p>The execution runtime can be configured using two primary switch parameters:</p>
+    <table>
+        <thead>
+            <tr>
+                <th>Parameter Switch</th>
+                <th>Type</th>
+                <th>Default Status</th>
+                <th>Functional Impact</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>-GoForImport</code></td>
+                <td>Switch</td>
+                <td>Omitted (False)</td>
+                <td>When <strong>omitted</strong>, the script runs in <strong>Dry-Run Mode</strong>, displaying proposed changes without modifying objects. When <strong>included</strong>, changes are written to the live Exchange server database using <code>Set-User</code>.</td>
+            </tr>
+            <tr>
+                <td><code>-ManualRun</code></td>
+                <td>Switch</td>
+                <td>Omitted (False)</td>
+                <td>When <strong>omitted</strong>, unmatched identities or multiple user collisions generate warnings and skip the row. When <strong>included</strong>, an interactive prompt asks the administrator to manually associate the employee record to candidate accounts.</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>Usage Guide</h2>
+
+    <h3>1. Dry-Run Check (Safe Preview)</h3>
+    <p>Execute this command to safe-test changes against your directory. The script outputs a comparison log showcasing which users are unchanged and which commands would execute:</p>
+    <pre>.\ImportEmployeePositions.ps1</pre>
+
+    <h3>2. Interactive Dictionary Calibration (Recommended First Step)</h3>
+    <p>Execute the utility with the manual flag to systematically clean rows with alternative naming choices or multi-identity collisions. Your interaction answers dynamically build your persistent translation database file:</p>
+    <pre>.\ImportEmployeePositions.ps1 -ManualRun</pre>
+
+    <h3>3. Production Verification</h3>
+    <p>Run the script again in dry-run mode and make any changes to the import file.  Make sure to change / to either a blank or a dash since the script has problems with the slash, and delete any users in the import file who don't exist in the Exchange server as well as any duplicates:</p>
+    <pre>.\ImportEmployeePositions.ps1</pre>
+
+    <h3>4. Production Live Upload</h3>
+    <p>Once your preview pipelines look completely aligned and execution mappings are verified, perform your live transaction update to commit all values to production Exchange and Active Directory:</p>
+    <pre>.\ImportEmployeePositions.ps1 -GoForImport</pre>
+
+    <h2>Error Handling &amp; Data Logging</h2>
+    <ul>
+        <li><strong>Structural Failures:</strong> Any syntax errors or structure variations within individual lines are safely isolated inside a local <code>try/catch</code> error handler, preventing an active run from aborting prematurely.</li>
+        <li><strong>Terminal Highlights:</strong> Console lines are highlighted in color (Cyan for Live Mode, Yellow for Dry-Run, Magenta for Manual Interaction, Green for Success, and Red/Yellow for Errors or Warnings) to make live console auditing clean and scannable.</li>
+    </ul>
+
+   
+
+<div class="footer" style="font-size: 0.85em; color: #555; margin-top: 30px; border-top: 1px solid #ccc; padding-top: 10px;">
+    <strong>Author:</strong> Created by Ted Mittelstaedt, CODA's IT Director, and the free AI's on the Internet on 10/05/2026, during the "Hour of the Wolf" as part of CODA Inc.'s internal IT Automation project.<br><br>
+    
+    <strong>Copyright:</strong> &copy; 2026 Ted Mittelstaedt and CODA Inc.  
+    All rights reserved. This document and the associated script(s) are the intellectual property of Ted Mittelstaedt and CODA Inc.  
+    Unauthorized reproduction, distribution, or modification without prior written consent is prohibited, except as expressly permitted under the license terms below.<br><br>
+    
+    <strong>License:</strong> This work is licensed under the Berkeley Software Distribution (BSD) 3-Clause License:<br><br>
+    <pre style="white-space: pre-wrap; color: black; background-color: #f9f9f9; border: 1px solid #ccc; padding: 10px; font-size: 0.85em; text-align: left; font-family: monospace, Courier, 'Courier New', Consolas, monospace;">
+BSD 3-Clause License
+
+Copyright (c) 2026, Ted Mittelstaedt and CODA Inc.
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+    </pre>
+</div>
+
+</body>
+</html>
